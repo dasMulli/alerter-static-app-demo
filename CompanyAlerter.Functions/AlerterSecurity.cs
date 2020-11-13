@@ -69,7 +69,7 @@ namespace CompanyAlerter.Functions
                 }
                 catch (SecurityTokenSignatureKeyNotFoundException ex)
                 {
-                    logger.LogError(ex, "Key not found while validating token");
+                    logger.LogError(ex, "Key not found while validating token: {Token}", value.Parameter);
                     // This exception is thrown if the signature key of the JWT could not be found.
                     // This could be the case when the issuer changed its signing keys, so we trigger a 
                     // refresh and retry validation.
