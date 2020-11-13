@@ -79,6 +79,7 @@ namespace CompanyAlerter.Functions
                 catch (SecurityTokenException ex)
                 {
                     logger.LogError(ex, "Unable to validate token - {OriginalMessage}", ex.Message);
+                    logger.LogInformation("Original Token: {Token}", value.Parameter);
                     return null;
                 }
             }
