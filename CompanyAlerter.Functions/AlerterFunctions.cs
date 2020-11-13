@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
 using CompanyAlerter.Shared;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -32,17 +34,28 @@ namespace CompanyAlerter.Functions
         {
             var principal = await security.ValidateTokenAsync(req.Headers.Authorization);
 
+            if (principal is null && req.Headers.TryGetValues("X-Authorization", out var additionalAuthorizationValues))
+            {
+                // Check X-Authorization fallback header due to https://github.com/Azure/static-web-apps/issues/34
+                log.LogInformation("Principal is null - trying X-Authentication header value instead");
+                var authValue = additionalAuthorizationValues.FirstOrDefault();
+                if (authValue != null && AuthenticationHeaderValue.TryParse(authValue, out var parsedAuthValue))
+                {
+                    principal = await security.ValidateTokenAsync(parsedAuthValue);
+                }
+            }
+
             if (principal is null)
             {
                 log.LogInformation("Principal is null - not logged in");
-                return new ForbidResult();
+                return new StatusCodeResult(StatusCodes.Status403Forbidden);
             }
 
             if (principal.HasClaim("scp", "Alert.Send"))
             {
-                log.LogInformation("Principal is null or does not contain required scope claims");
+                log.LogInformation("Principal does not contain required scope claims");
                 log.LogInformation("Current claims: {ClaimTypes}", string.Join(", ", principal.Claims.Select(c => c.Type)));
-                return new ForbidResult();
+                return new StatusCodeResult(StatusCodes.Status403Forbidden);
             }
 
             SendAlertRequest sendAlertRequest;

@@ -75,7 +75,13 @@
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/api/sendAlert");
         requestMessage.Content = jsonContent;
-        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Value);
+
+        // Add X-Authorization fallback header due to https://github.com/Azure/static-web-apps/issues/34
+        requestMessage.Headers.Add(
+        "X-Authorization",
+        (requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Value))
+            .ToString()
+        );
 
         var result = await Http.SendAsync(requestMessage);
 

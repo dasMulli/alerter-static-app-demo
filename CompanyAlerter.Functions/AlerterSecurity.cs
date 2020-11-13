@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading;
@@ -76,7 +77,7 @@ namespace CompanyAlerter.Functions
                     _configurationManager.RequestRefresh();
                     tries++;
                 }
-                catch (SecurityTokenException ex)
+                catch (Exception ex)
                 {
                     logger.LogError(ex, "Unable to validate token - {OriginalMessage}", ex.Message);
                     logger.LogInformation("Original Token: {Token}", value.Parameter);
