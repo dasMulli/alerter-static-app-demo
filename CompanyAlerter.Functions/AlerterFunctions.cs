@@ -32,9 +32,16 @@ namespace CompanyAlerter.Functions
         {
             var principal = await security.ValidateTokenAsync(req.Headers.Authorization);
 
-            if (principal is null || principal.HasClaim("scp", "Alert.Send"))
+            if (principal is null)
+            {
+                log.LogInformation("Principal is null - not logged in");
+                return new ForbidResult();
+            }
+
+            if (principal.HasClaim("scp", "Alert.Send"))
             {
                 log.LogInformation("Principal is null or does not contain required scope claims");
+                log.LogInformation("Current claims: {ClaimTypes}", string.Join(", ", principal.Claims.Select(c => c.Type)));
                 return new ForbidResult();
             }
 
