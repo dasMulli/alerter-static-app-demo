@@ -1,4 +1,4 @@
-﻿namespace CompanyAlerter.Shared
+﻿namespace CompanyAlerter.Functions
 {
     public class SecurityConfig
     {

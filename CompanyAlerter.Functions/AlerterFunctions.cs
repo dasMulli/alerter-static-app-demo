@@ -34,6 +34,7 @@ namespace CompanyAlerter.Functions
 
             if (principal is null || principal.HasClaim("scp", "Alert.Send"))
             {
+                log.LogInformation("Principal is null or does not contain required scope claims");
                 return new ForbidResult();
             }
 
