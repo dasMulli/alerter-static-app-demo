@@ -1,0 +1,91 @@
+﻿@page "/alert"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using System.Net.Http.Headers
+@attribute [Authorize]
+@inject IAccessTokenProvider TokenProvider
+@inject IJSRuntime JsRuntime
+@inject HttpClient Http
+
+
+<mgt-people-picker type="any" @ref="peoplePickerReference"></mgt-people-picker>
+
+<textarea @bind="@message" placeholder="Message" class="form-control mt-4"></textarea>
+
+<button class="btn btn-primary mt-4" @onclick="Alert" disabled="@string.IsNullOrWhiteSpace(message)">Send Alert</button>
+
+@if (statusText is not null)
+{
+    <p class="alert-info mt-4">@statusText</p>
+}
+
+@code
+{
+    private ElementReference peoplePickerReference;
+
+    private string message;
+
+    private string statusText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        staticAcquireMgtAccessToken = async (scopes) =>
+        {
+            var tokenResult = await TokenProvider.RequestAccessToken(new AccessTokenRequestOptions
+            {
+                Scopes = scopes
+            });
+            return tokenResult.TryGetToken(out var accessToken) ? accessToken.Value : null;
+        };
+
+        await JsRuntime.InvokeVoidAsync("setMgtProviderStateSignedIn");
+
+        await base.OnInitializedAsync();
+    }
+
+    private static Func<string[], Task<string>> staticAcquireMgtAccessToken;
+
+    [JSInvokable("AcquireMgtAccessToken")]
+    public static Task<string> AcquireMgtAccessToken(string[] scopes) => staticAcquireMgtAccessToken?.Invoke(scopes) ?? Task.FromResult((string)null);
+
+    private async Task Alert()
+    {
+        var selectedPeopleIds = await JsRuntime.InvokeAsync<string[]>("getSelectedPeopleIds", peoplePickerReference);
+
+        if (selectedPeopleIds is null || selectedPeopleIds.Length == 0)
+        {
+            return;
+        }
+
+        var accessTokenResponse = await TokenProvider.RequestAccessToken(new AccessTokenRequestOptions
+        {
+            Scopes = new[] { "api://alerter-demo-preparation/Alert.Send" }
+        });
+
+        if (!accessTokenResponse.TryGetToken(out var accessToken))
+        {
+            return;
+        }
+
+        var jsonContent = JsonContent.Create(new SendAlertRequest
+        {
+            Message = message,
+            RecipientIds = selectedPeopleIds
+        });
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/api/sendAlert");
+        requestMessage.Content = jsonContent;
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Value);
+
+        var result = await Http.SendAsync(requestMessage);
+
+        if (result.IsSuccessStatusCode)
+        {
+            message = "Message sent";
+        }
+        else
+        {
+            statusText = "Sending Message failed";
+        }
+    }
+}
